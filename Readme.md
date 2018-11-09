@@ -3,7 +3,7 @@ None of the Shopify to mailchimp integrations could handle my unique setup. I ha
 
 - To sync users to one of multiple different lists based on a cart attribute set by my shopify store.
 
-- To sync more than just email address. Integromat, Automate.io, and Zapier integrations didn't offer this.
+- To sync more than just email address. (Integromat, Automate.io, and Zapier integrations didn't offer this.)
 
 - To update existing users if they didn't have this data already.
 
@@ -11,10 +11,13 @@ None of the Shopify to mailchimp integrations could handle my unique setup. I ha
 
 In a file called Properties.py I have my properties listed like this:
 
-`shopifyURL = 'https://MY_API_KEY:GET_YOURS_FROM_SHOPIFY_DOCUMENTATION@MY-STORE.myshopify.com/admin/orders.json'
-mailchimpAPIKey = "MY_MAILCHIMP_KEY"
-mailchimpBaseURL = "https://MY_SERVER.api.mailchimp.com/3.0"
-mailchimpSearchURL = "https://MY_SERVER.api.mailchimp.com/3.0/search-members?fields=exact_matches&query="`
+`shopifyURL = 'https://MY_API_KEY:GET_YOURS_FROM_SHOPIFY_DOCUMENTATION@MY-STORE.myshopify.com/admin/orders.json'`
+
+`mailchimpAPIKey = "MY_MAILCHIMP_KEY"`
+
+`mailchimpBaseURL = "https://MY_SERVER.api.mailchimp.com/3.0"`
+
+`mailchimpSearchURL = "https://MY_SERVER.api.mailchimp.com/3.0/search-members?fields=exact_matches&query="`
 
 All the properties are pretty self-explanatory except mailchimpSearchURL. The fields query parameter ensures that I'm only returning exact matches.
 
