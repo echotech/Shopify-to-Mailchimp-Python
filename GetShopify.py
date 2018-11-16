@@ -4,16 +4,19 @@ import logging
 from datetime import datetime, timedelta
 
 # Set logging level
-logging.basicConfig(level=logging.INFO, filename='app.log', filemode='a', format='%(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, filename='app.log', filemode='a',
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    datefmt='%m-%d %H:%M'
+                    )
 
 # Get date range for past 24 hours
-date = datetime.now() - timedelta(days=1)
+date = datetime.now() - timedelta(days=7)
 
 # Sets URL and parameters for request
 url = Properties.shopifyURL
 params = dict(
     # Gets everything after the date set above
-    # created_at_min = date,
+    created_at_min = date,
     # Returns only the fields below
     fields='name,contact_email,buyer_accepts_marketing,note_attributes,billing_address'
 )
@@ -33,6 +36,10 @@ if r.status_code != 200:
 # Mailchimp API Key and url (from Properties file)
 mailchimpAPIKey = Properties.mailchimpAPIKey
 mailchimpBaseURL = Properties.mailchimpBaseURL
+
+# Counts users added and updated.
+addedCount = 0;
+updatedCount = 0;
 
 # Iterates through orders and assigns variables to be used in POST/UPDATE
 for order in orders:
@@ -69,12 +76,13 @@ for order in orders:
                     logging.info(updateSub.status_code)
                     logging.info(updateSub.reason)
                     logging.info(updateSub.content)
-
                     if updateSub.status_code != 200:
                         logging.error("User could not be updated:")
                         logging.error(updateSub.status_code)
                         logging.error(updateSub.reason)
                         logging.error(updateSub.content)
+                        break
+                    updatedCount += 1
 
         else:
             # Add user to mailchimp
@@ -91,3 +99,10 @@ for order in orders:
                 logging.error(postSub.status_code)
                 logging.error(postSub.reason)
                 logging.error(postSub.content)
+                break
+            addedCount += 1
+
+
+logging.info("Added " + str(addedCount) + " users.")
+logging.info("Updated " + str(updatedCount) + " users.")
+#print("Added " + str(addedCount) + " and updated " + str(updatedCount) + " users at " + str(datetime.now()) + ".")
