@@ -4,13 +4,13 @@ import logging
 from datetime import datetime, timedelta
 
 # Set logging level
-logging.basicConfig(level=logging.INFO, filename='app.log', filemode='a',
+logging.basicConfig(level=logging.INFO, filename='/var/log/shopify-mailchimp.log', filemode='a',
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     datefmt='%m-%d %H:%M'
                     )
 
 # Get date range for past 24 hours
-date = datetime.now() - timedelta(days=7)
+date = datetime.now() - timedelta(days=1)
 
 # Sets URL and parameters for request
 url = Properties.shopifyURL
