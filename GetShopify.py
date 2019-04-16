@@ -1,6 +1,7 @@
 import requests
 import Properties
 import logging
+import hashlib
 from datetime import datetime, timedelta
 
 # Set logging level
@@ -16,9 +17,12 @@ date = datetime.now() - timedelta(days=1)
 url = Properties.shopifyURL
 params = dict(
     # Gets everything after the date set above
-    created_at_min = date,
+    created_at_min=date,
     # Returns only the fields below
-    fields='name,contact_email,buyer_accepts_marketing,note_attributes,billing_address'
+    fields='name,contact_email,buyer_accepts_marketing,note_attributes,billing_address',
+    status='any',
+    # last_id='944696590378',
+    limit='250'
 )
 
 # Get request from Shopify and creates orders list from json.
@@ -51,58 +55,49 @@ for order in orders:
     # Iterating through the notes sub-list to get the mailchimp list ID
     for note in order['note_attributes']:
         if note['name'] == 'Club':
-            club = note['value']
-            if not club:
+            clubName = note['value']
+
+            if not clubName:
                 logging.error(("No clubID found in order: " + order['order_number']))
 
     # Verifies user accepts marketing then attempts to add user to Mailchimp list as new subscriber
-    if acceptsMarketing:
-        # Attempt to lookup user in mailchimp
-        searchSub = requests.get((Properties.mailchimpSearchURL + email), auth=('python', mailchimpAPIKey))
-        matchData = searchSub.json()
-        members = matchData['exact_matches']['members']
+    # if acceptsMarketing:
+    # Attempt to lookup user in mailchimp
+    # searchSub = requests.get((Properties.mailchimpSearchURL + email), auth=('python', mailchimpAPIKey))
+    # matchData = searchSub.json()
+    # members = matchData['exact_matches']['members']
 
-        # If there is a match on the email
-        if members:
-            # Iterates through exact matches for the email address
-            for member in members:
-                listId = member['list_id']
-                userId = member['id']
-                mergeFirstName = member['merge_fields']['FNAME']
-                # Checks for null firstname field and updates user if it isn't present
-                if not mergeFirstName:
-                    updateSub = requests.put((mailchimpBaseURL + "/lists/" + listId + "/members/" + userId),
-                                             data=subscriber, auth=('python', mailchimpAPIKey))
-                    logging.info(updateSub.status_code)
-                    logging.info(updateSub.reason)
-                    logging.info(updateSub.content)
-                    if updateSub.status_code != 200:
-                        logging.error("User could not be updated:")
-                        logging.error(updateSub.status_code)
-                        logging.error(updateSub.reason)
-                        logging.error(updateSub.content)
-                        break
-                    updatedCount += 1
+    # Try to add users and if fails, update user.
+    # Add user to mailchimp
+    subscriber = '{"email_address": "' + email + '","status": "subscribed","merge_fields": {"FNAME": "' + firstName + '","LNAME": "' + lastName + '"}}'
+    requestUrl = mailchimpBaseURL + "/lists/" + clubName + "/members"
+    postSub = requests.post(requestUrl, data=subscriber, auth=('python', mailchimpAPIKey))
+    # If user was added successfully, log it.
+    if postSub.status_code == 200:
+        addedCount = addedCount + 1
+        logging.info("Added user " + email + "to list " + clubName)
+        continue
 
-        else:
-            # Add user to mailchimp
-            subscriber = '{"email_address": "' + email + '","status": "subscribed","merge_fields": {"FNAME": "' + firstName + '","LNAME": "' + lastName + '"}}'
-            requestUrl = mailchimpBaseURL + "/lists/" + club + "/members"
-            postSub = requests.post(requestUrl, data=subscriber, auth=('python', mailchimpAPIKey))
-            logging.info(postSub.status_code)
-            logging.info(postSub.reason)
-            logging.info(postSub.content)
-            logging.info("Added User: " + email + " at " + str(datetime.now()))
-            # If attempt fails, log it
-            if postSub.status_code != "200":
-                logging.error("Unable to add user " + email + " on " + str(datetime.now()))
-                logging.error(postSub.status_code)
-                logging.error(postSub.reason)
-                logging.error(postSub.content)
-                break
-            addedCount += 1
+    # If attempt fails, log it
+    if postSub.status_code != 200:
+        #logging.info("Unable to add user " + email + " to list " + clubName + " attempting update.")
+        subscriber_hash = hashlib.md5(email.encode('utf-8')).hexdigest()
+        # print(email + ", " + firstName + ", " + lastName + ", " + subscriber_hash + ", " + clubName)
+        updateSub = requests.put(
+            (mailchimpBaseURL + "/lists/" + clubName + "/members/" + subscriber_hash),
+            data=subscriber, auth=('python', mailchimpAPIKey))
 
+        if updateSub.status_code != 200:
+            logging.error("User could not be updated:")
+            logging.error(updateSub.status_code)
+            logging.error(updateSub.reason)
+            logging.error(updateSub.content)
+            continue
 
-logging.info("Added " + str(addedCount) + " users.")
-logging.info("Updated " + str(updatedCount) + " users.")
-#print("Added " + str(addedCount) + " and updated " + str(updatedCount) + " users at " + str(datetime.now()) + ".")
+        if updateSub.status_code == 200:
+            updatedCount = updatedCount + 1
+            logging.info("Updated user " + email + "in list " + clubName)
+            continue
+
+logging.info(str(datetime.now()) + ": " + "Added " + str(addedCount) + " users.")
+logging.info(str(datetime.now()) + ": " + "Updated " + str(updatedCount) + " users.")
