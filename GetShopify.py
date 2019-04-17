@@ -18,10 +18,17 @@ url = Properties.shopifyURL
 params = dict(
     # Gets everything after the date set above
     created_at_min=date,
+    
     # Returns only the fields below
     fields='name,contact_email,buyer_accepts_marketing,note_attributes,billing_address',
+    
+    # Returns an order of any status, not just complete  
     status='any',
-    # last_id='944696590378',
+  
+    # Sets the last id, can be used if you're going back in time
+    # last_id='whatever',
+  
+    # Gets maximum of 250 orders at a time
     limit='250'
 )
 
@@ -59,13 +66,6 @@ for order in orders:
 
             if not clubName:
                 logging.error(("No clubID found in order: " + order['order_number']))
-
-    # Verifies user accepts marketing then attempts to add user to Mailchimp list as new subscriber
-    # if acceptsMarketing:
-    # Attempt to lookup user in mailchimp
-    # searchSub = requests.get((Properties.mailchimpSearchURL + email), auth=('python', mailchimpAPIKey))
-    # matchData = searchSub.json()
-    # members = matchData['exact_matches']['members']
 
     # Try to add users and if fails, update user.
     # Add user to mailchimp
