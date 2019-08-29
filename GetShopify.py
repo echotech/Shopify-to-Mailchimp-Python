@@ -5,7 +5,7 @@ import hashlib
 from datetime import datetime, timedelta
 
 # Set logging level
-logging.basicConfig(level=logging.INFO, filename='/var/log/shopify-mailchimp.log', filemode='a',
+logging.basicConfig(level=logging.INFO, filename='/tmp/shopify-mailchimp.log', filemode='a',
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     datefmt='%m-%d %H:%M'
                     )
@@ -18,18 +18,19 @@ url = Properties.shopifyURL
 params = dict(
     # Gets everything after the date set above
     created_at_min=date,
-    
+
     # Returns only the fields below
     fields='name,contact_email,buyer_accepts_marketing,note_attributes,billing_address',
-    
+
     # Returns an order of any status, not just complete  
     status='any',
-  
+
     # Sets the last id, can be used if you're going back in time
     # last_id='whatever',
-  
+
     # Gets maximum of 250 orders at a time
     limit='250'
+
 )
 
 # Get request from Shopify and creates orders list from json.
@@ -58,33 +59,45 @@ for order in orders:
     email = order['contact_email']
     firstName = order['billing_address']['first_name']
     lastName = order['billing_address']['last_name']
-
+    clubId = 959e620481
     # Iterating through the notes sub-list to get the mailchimp list ID
     for note in order['note_attributes']:
-        if note['name'] == 'Club':
+        if note['name'] == 'ClubName':
             clubName = note['value']
-
+            print(clubName)
             if not clubName:
                 logging.error(("No clubID found in order: " + order['order_number']))
 
     # Try to add users and if fails, update user.
     # Add user to mailchimp
     subscriber = '{"email_address": "' + email + '","status": "subscribed","merge_fields": {"FNAME": "' + firstName + '","LNAME": "' + lastName + '"}}'
-    requestUrl = mailchimpBaseURL + "/lists/" + clubName + "/members"
+    requestUrl = mailchimpBaseURL + "/lists/" + clubId + "/members"
     postSub = requests.post(requestUrl, data=subscriber, auth=('python', mailchimpAPIKey))
+
+    # Set the json that will need to be set to tag user
+    subscriberTag = '{"tags": [{"name": "' + clubName + '","status": "active"}]}'
+    subscriber_hash = hashlib.md5(email.encode('utf-8')).hexdigest()
+
     # If user was added successfully, log it.
     if postSub.status_code == 200:
         addedCount = addedCount + 1
         logging.info("Added user " + email + "to list " + clubName)
-        continue
+
+        # Attempt to tag the user after adding it
+        tagSub = requests.post((mailchimpBaseURL + "/lists/" + clubId + "members" + subscriber_hash + "/tags/"),
+                               data=subscriberTag, auth=('python', mailchimpAPIKey))
+        if tagSub.status_code == 200:
+            taggedCount = taggedCount + 1
+            logging.info("Tagged user " + email + " with tag " + clubName)
+            continue
 
     # If attempt fails, log it
     if postSub.status_code != 200:
-        #logging.info("Unable to add user " + email + " to list " + clubName + " attempting update.")
-        subscriber_hash = hashlib.md5(email.encode('utf-8')).hexdigest()
+        # logging.info("Unable to add user " + email + " to list " + clubName + " attempting update.")
+
         # print(email + ", " + firstName + ", " + lastName + ", " + subscriber_hash + ", " + clubName)
         updateSub = requests.put(
-            (mailchimpBaseURL + "/lists/" + clubName + "/members/" + subscriber_hash),
+            (mailchimpBaseURL + "/lists/" + clubId + "/members/" + subscriber_hash),
             data=subscriber, auth=('python', mailchimpAPIKey))
 
         if updateSub.status_code != 200:
@@ -97,7 +110,22 @@ for order in orders:
         if updateSub.status_code == 200:
             updatedCount = updatedCount + 1
             logging.info("Updated user " + email + "in list " + clubName)
-            continue
+
+            # If user already existed and could be updated, tag it.
+            tagSub = requests.post((mailchimpBaseURL + "/lists/" + clubId + "members" + subscriber_hash + "/tags/"),
+                                   data=subscriberTag, auth=('python', mailchimpAPIKey))
+            if tagSub.status_code == 200:
+                taggedCount = taggedCount + 1
+                logging.info("Tagged user " + email + " with tag " + clubName)
+                continue
+            else:
+                logging.error("Could not tag user " + email + " with tag " + clubName)
+                logging.error(tagSub.status_code)
+                logging.error(tagSub.reason)
+                logging.error(tagSub.content)
+                continue
+
 
 logging.info(str(datetime.now()) + ": " + "Added " + str(addedCount) + " users.")
 logging.info(str(datetime.now()) + ": " + "Updated " + str(updatedCount) + " users.")
+logging.info(str(datetime.now()) + ": " + "Tagged " + str(taggedCount) + " users.")
