@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, filename='/tmp/shopify-mailchimp.log', f
                     )
 
 # Get date range for past 24 hours
-date = datetime.now() - timedelta(days=1)
+date = datetime.now() - timedelta(days=30)
 
 # Sets URL and parameters for request
 url = Properties.shopifyURL
@@ -34,13 +34,14 @@ params = dict(
 )
 
 # Get request from Shopify and creates orders list from json.
+logging.info("Getting Shopify Orders")
 r = requests.get(url, params)
 data = r.json()
 orders = data['orders']
 
 # Shopify response
 if r.status_code != 200:
-    logging.error("Shopify request failed:")
+    logging.error("FAILURE: Shopify request failed!")
     logging.error(r.status_code)
     logging.error(r.reason)
     logging.error(r.content)
@@ -66,18 +67,20 @@ for order in orders:
     lastName = order['billing_address']['last_name']
     # Iterating through the notes sub-list to get the mailchimp list ID
     for note in order['note_attributes']:
-        if note['name'] == 'ClubId':
-            clubId = note['value']
-            print(clubId)
-            if not clubId:
-                logging.error(("No clubID found in order: " + order['order_number']))
+        if note['name'] == 'ClubName':
+            clubName = note['value']
+            logging.info("ClubName for order " + order['name'] + " is " + clubName)
+            if not clubName:
+                logging.error("No clubID found in order: " + order['name'])
 
     # Try to add users and if fails, update user.
     # Add user to mailchimp
+
     subscriber = '{"email_address": "' + email + '","status": "subscribed","merge_fields": {"FNAME": "' \
-                 + firstName + '","LNAME": "' + lastName + '"}, "interests": {' + clubId + ': true}}'
+                 + firstName + '","LNAME": "' + lastName + '"}, "interests": {' + clubName + ': true}}'
     requestUrl = mailchimpBaseURL + "/lists/959e620481/members"
-    postSub = requests.post(requestUrl, data=subscriber, auth=('python', mailchimpAPIKey))
+    logging.info("Attempting to POST email " + email + " from order " + order['name'])
+    postSub = requests.post(requestUrl, data=subscriber.encode('utf-8'), auth=("python", mailchimpAPIKey))
 
     # Set the subscriber_hash
     subscriber_hash = hashlib.md5(email.encode('utf-8')).hexdigest()
@@ -85,28 +88,28 @@ for order in orders:
     # If user was added successfully, log it.
     if postSub.status_code == 200:
         addedCount = addedCount + 1
-        logging.info("Added user " + email + "to list " + clubId)
+        logging.info("SUCCESS: added user " + email + "to list " + clubName)
 
     # If attempt fails, log it
     if postSub.status_code != 200:
-        # logging.info("Unable to add user " + email + " to list " + clubName + " attempting update.")
+        logging.info("WARN: Unable to add user " + email + " to list " + clubName + " attempting update.")
 
         # print(email + ", " + firstName + ", " + lastName + ", " + subscriber_hash + ", " + clubName)
         updateSub = requests.patch(
             (mailchimpBaseURL + "/lists/959e620481/members/" + subscriber_hash),
-            data=subscriber, auth=('python', mailchimpAPIKey))
+            data=subscriber.encode('utf-8'), auth=("python", mailchimpAPIKey))
 
         if updateSub.status_code == 200:
             updatedCount = updatedCount + 1
-            logging.info("Updated user: " + email + ". Added to group: " + clubId)
+            logging.info("SUCCESS: updated user: " + email + ". Added to group: " + clubName)
 
         if updateSub.status_code != 200:
-            logging.error("User could not be updated:")
+            logging.error("User " + email + " couldn't be updated. Club " + clubName + " Order # " + order['name'])
             logging.error(updateSub.status_code)
             logging.error(updateSub.reason)
             logging.error(updateSub.content)
             continue
 
 
-logging.info(str(datetime.now()) + ": " + "Added " + str(addedCount) + " users.")
-logging.info(str(datetime.now()) + ": " + "Updated " + str(updatedCount) + " users.")
+logging.info("Added " + str(addedCount) + " users.")
+logging.info("Updated " + str(updatedCount) + " users.")
