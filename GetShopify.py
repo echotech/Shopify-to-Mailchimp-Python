@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, filename='/tmp/shopify-mailchimp.log', f
                     )
 
 # Get date range for past 24 hours
-date = datetime.now() - timedelta(days=30)
+date = datetime.now() - timedelta(days=1)
 
 # Sets URL and parameters for request
 url = Properties.shopifyURL
