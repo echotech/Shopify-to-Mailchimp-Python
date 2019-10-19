@@ -5,7 +5,7 @@ import hashlib
 from datetime import datetime, timedelta
 
 # Set logging level
-logging.basicConfig(level=logging.INFO, filename='/tmp/shopify-mailchimp.log', filemode='a',
+logging.basicConfig(level=logging.INFO, filename='/var/log/shopify-mailchimp.log', filemode='a',
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     datefmt='%m-%d %H:%M'
                     )
