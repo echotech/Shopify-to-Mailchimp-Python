@@ -5,13 +5,13 @@ import hashlib
 from datetime import datetime, timedelta
 
 # Set logging level
-logging.basicConfig(level=logging.INFO, filename='/var/log/shopify-mailchimp.log', filemode='a',
+logging.basicConfig(level=logging.INFO, filename='./shopify-mailchimp.log', filemode='a',
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     datefmt='%m-%d %H:%M'
                     )
 
 # Get date range for past 24 hours
-date = datetime.now() - timedelta(days=1)
+date = datetime.now() - timedelta(days=300)
 
 # Sets URL and parameters for request
 url = Properties.shopifyURL
@@ -75,9 +75,13 @@ for order in orders:
 
     # Try to add users and if fails, update user.
     # Add user to mailchimp
+    try:
+        mailchimpInterestId = Properties.mailchimpInterests[clubName.strip()]
+    except KeyError as e:
+        logging.error("Couldn't find an ID for club " + clubName + ".")
 
     subscriber = '{"email_address": "' + email + '","status": "subscribed","merge_fields": {"FNAME": "' \
-                 + firstName + '","LNAME": "' + lastName + '"}, "interests": {' + clubName + ': true}}'
+                 + firstName + '","LNAME": "' + lastName + '"}, "interests": {"' + mailchimpInterestId + '": true}}'
     requestUrl = mailchimpBaseURL + "/lists/959e620481/members"
     logging.info("Attempting to POST email " + email + " from order " + order['name'])
     postSub = requests.post(requestUrl, data=subscriber.encode('utf-8'), auth=("python", mailchimpAPIKey))
