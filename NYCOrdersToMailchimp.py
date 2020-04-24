@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from mailchimp3 import MailChimp
 
 # Set logging level
-logging.basicConfig(level=logging.INFO, filename='./shopify-mailchimp.log', filemode='a',
+logging.basicConfig(level=logging.INFO, filename='./nyc-shopify-mailchimp.log', filemode='a',
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     datefmt='%m-%d %H:%M'
                     )
@@ -19,15 +19,15 @@ date = datetime.now() - timedelta(days=1)
 client = MailChimp(mc_api=Properties.mailchimpAPIKey)
 
 # Sets URL and parameters for request
-url = Properties.shopifyURL
+url = Properties.shopifyNYCURL
 params = dict(
     # Gets everything after the date set above
-    created_at_min=date,
+    #created_at_min=date,
 
     # Returns only the fields below
     fields='name,contact_email,buyer_accepts_marketing,note_attributes,billing_address',
 
-    # Returns an order of any status, not just complete  
+    # Returns an order of any status, not just complete
     status='any',
 
     # Sets the last id, can be used if you're going back in time
@@ -91,17 +91,17 @@ for order in orders:
         continue
 
     subscriber = {
-        "status": "subscribed",
-        "email_address": email,
+            "status": "subscribed",
+            "email_address": email,
 
-        "merge_fields": {
-            "FNAME": firstName,
-            "LNAME": lastName,
-        },
-        "interests": {
-            mailchimpInterestId: True
+            "merge_fields": {
+                "FNAME": firstName,
+                "LNAME": lastName,
+            },
+            "interests": {
+                mailchimpInterestId: True
+            }
         }
-    }
 
     tags = {
         "tags":
@@ -113,7 +113,6 @@ for order in orders:
             ]
     }
 
-    logging.info("Attempting to POST email " + email + " from order " + order['name'])
     logging.info("Attempting to POST email " + email + " from order " + order['name'])
 
     try:
@@ -127,12 +126,12 @@ for order in orders:
         logging.info("WARN: Unable to add user " + email + " to list " + clubName + " attempting update.")
         try:
             client.lists.members.update(list_id=mailchimpListID, subscriber_hash=subscriber_hash, data=subscriber)
+
             logging.info("SUCCESS: updated user " + email + "to list " + clubName)
             updatedCount = updatedCount + 1
         except MailChimpError as er:
-            logging.error("User " + email + " couldn't be updated. Club " + clubName + " Order  " + order['name'])
+            logging.error("User " + email + " couldn't be updated. Club " + clubName + " Order # " + order['name'])
             logging.error(str(er))
-
         try:
             logging.info("Attempting to add tags to user.")
             client.lists.members.tags.update(list_id=mailchimpListID, subscriber_hash=subscriber_hash, data=tags)

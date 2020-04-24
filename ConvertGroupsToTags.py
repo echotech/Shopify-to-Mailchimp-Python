@@ -2,12 +2,18 @@ import requests
 import Properties
 import logging
 import hashlib
+from mailchimp3 import MailChimp
 
 from datetime import datetime, timedelta
+from mailchimp3.mailchimpclient import MailChimpError
 
 # Mailchimp API Key and url (from Properties file)
 mailchimpAPIKey = Properties.mailchimpAPIKey
 mailchimpBaseURL = Properties.mailchimpBaseURL
+
+# Instantiate mailchimp client
+client = MailChimp(mc_api=Properties.mailchimpAPIKey)
+mailchimpListID = "959e620481"
 
 # Get date range for past 24 hours
 date = datetime.now() - timedelta(days=1)
@@ -41,6 +47,7 @@ for member in members:
     memberEmail = member['email_address']
     # Set the subscriber_hash
     subscriber_hash = hashlib.md5(memberEmail.encode('utf-8')).hexdigest()
+
     logging.info("Updating member: " + memberEmail)
     tags = member['tags']
 
@@ -63,21 +70,28 @@ for member in members:
                 clubName.append(k)
 
     for club in clubName:
-        postURL = mailchimpBaseURL + "/lists/959e620481/members/" + subscriber_hash + "/tags"
-        postData = '{"tags": [{"name": "' + club + '", "status": "active"}]}'
-        logging.info("Posting: " + postData + " to " + postURL)
+
         if tagInClub(clubName, tagNames):
             logging.info("Tag already exists, skipping.")
             continue
 
-        postTags = requests.post(postURL, data=postData.encode('utf-8'), auth=("python", mailchimpAPIKey))
-        if postTags.status_code == 204:
-            logging.info("Successfully added " + club + " to " + memberEmail + ".")
-            updatedCount = updatedCount + 1
-        else:
-            logging.error("Could not add tags to user!")
-            logging.error(postTags.status_code)
-            logging.error(postTags.reason)
-            logging.error(postTags.content)
+        putTags = {
+            "tags":
+                [
+                    {
+                        "name": club,
+                        "status": "active"
+                    }
+                ]
+        }
+
+        try:
+            logging.info("Attempting to add tags to user.")
+            client.lists.members.tags.update(list_id=mailchimpListID, subscriber_hash=subscriber_hash, data=putTags)
+            logging.info("SUCCESS: tagged user " + memberEmail + " with " + club)
+        except MailChimpError as error:
+            logging.error("User " + memberEmail + " couldn't be tagged. Club: " + club + ".")
+            logging.error(str(error))
+
 
 logging.info("Updated " + str(updatedCount) + " users.")
