@@ -59,6 +59,8 @@ mailchimpListID = "959e620481"
 # Counts users added and updated.
 addedCount = 0;
 updatedCount = 0;
+tagErrorCount = 0;
+groupErrorCount = 0;
 
 # Iterates through orders and assigns variables to be used in POST/UPDATE
 for order in orders:
@@ -114,7 +116,6 @@ for order in orders:
     }
 
     logging.info("Attempting to POST email " + email + " from order " + order['name'])
-    logging.info("Attempting to POST email " + email + " from order " + order['name'])
 
     try:
         client.lists.members.create(list_id=mailchimpListID, data=subscriber)
@@ -132,6 +133,7 @@ for order in orders:
         except MailChimpError as er:
             logging.error("User " + email + " couldn't be updated. Club " + clubName + " Order  " + order['name'])
             logging.error(str(er))
+            errorCount = groupErrorCount + 1
 
         try:
             logging.info("Attempting to add tags to user.")
@@ -140,7 +142,10 @@ for order in orders:
         except MailChimpError as error:
             logging.error("User " + email + " couldn't be tagged. Club: " + clubName + " Order  " + order['name'])
             logging.error(str(error))
+            errorCount = tagErrorCount + 1
 
 
 logging.info("Added " + str(addedCount) + " users.")
 logging.info("Updated " + str(updatedCount) + " users.")
+logging.info("There were " + str(tagErrorCount) + " tagging errors.")
+logging.info("There were " + str(tagErrorCount) + " group errors.")
