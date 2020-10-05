@@ -57,10 +57,10 @@ mailchimpBaseURL = Properties.mailchimpBaseURL
 mailchimpListID = "959e620481"
 
 # Counts users added and updated.
-addedCount = 0;
-updatedCount = 0;
-tagErrorCount = 0;
-groupErrorCount = 0;
+addedCount = 0
+updatedCount = 0
+tagErrorCount = 0
+groupErrorCount = 0
 
 # Iterates through orders and assigns variables to be used in POST/UPDATE
 for order in orders:
@@ -135,14 +135,14 @@ for order in orders:
             logging.error(str(er))
             errorCount = groupErrorCount + 1
 
-        try:
-            logging.info("Attempting to add tags to user.")
-            client.lists.members.tags.update(list_id=mailchimpListID, subscriber_hash=subscriber_hash, data=tags)
-            logging.info("SUCCESS: tagged user " + email + " with " + clubName)
-        except MailChimpError as error:
-            logging.error("User " + email + " couldn't be tagged. Club: " + clubName + " Order  " + order['name'])
-            logging.error(str(error))
-            errorCount = tagErrorCount + 1
+    try:
+        logging.info("Attempting to add tags to user.")
+        client.lists.members.tags.update(list_id=mailchimpListID, subscriber_hash=subscriber_hash, data=tags)
+        logging.info("SUCCESS: tagged user " + email + " with " + clubName)
+    except MailChimpError as error:
+        logging.error("User " + email + " couldn't be tagged. Club: " + clubName + " Order  " + order['name'])
+        logging.error(str(error))
+        errorCount = tagErrorCount + 1
 
 
 logging.info("Added " + str(addedCount) + " users.")
