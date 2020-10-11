@@ -89,6 +89,7 @@ for member in members:
             logging.info("Attempting to add tags to user.")
             client.lists.members.tags.update(list_id=mailchimpListID, subscriber_hash=subscriber_hash, data=putTags)
             logging.info("SUCCESS: tagged user " + memberEmail + " with " + club)
+            updatedCount = updatedCount + 1
         except MailChimpError as error:
             logging.error("User " + memberEmail + " couldn't be tagged. Club: " + club + ".")
             logging.error(str(error))
